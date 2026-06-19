@@ -3,488 +3,1470 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Klasifikasi Sampah Otomatis - Deep Learning</title>
-    <!-- Google Fonts: Outfit -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>EcoScan AI — Klasifikasi Sampah Cerdas</title>
+    <meta name="description" content="Sistem klasifikasi sampah organik dan anorganik berbasis Deep Learning CNN. Upload foto sampah dan dapatkan analisis instan.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0f172a;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-color: #f1f5f9;
-            --text-muted: #94a3b8;
-            --accent-green: #10b981;
-            --accent-rec: #3b82f6;
-            --accent-org: #a78bfa;
-            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --bg-primary: #060b14;
+            --bg-secondary: #0d1526;
+            --bg-card: rgba(13, 21, 38, 0.8);
+            --bg-card-hover: rgba(18, 30, 54, 0.9);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.18);
+            --text-primary: #e8f0fe;
+            --text-secondary: #7b93c0;
+            --text-muted: #4a6080;
+            --green: #00e676;
+            --green-dim: #00c853;
+            --green-glow: rgba(0, 230, 118, 0.15);
+            --blue: #448aff;
+            --blue-dim: #2979ff;
+            --blue-glow: rgba(68, 138, 255, 0.15);
+            --purple: #b388ff;
+            --purple-glow: rgba(179, 136, 255, 0.15);
+            --orange: #ff6d00;
+            --red: #ff1744;
+            --shadow-card: 0 20px 40px rgba(0, 0, 0, 0.4);
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
         }
 
+        html { scroll-behavior: smooth; }
+
         body {
-            background-color: var(--bg-color);
-            background-image: radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
-                              radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
-            color: var(--text-color);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* ===== ANIMATED BACKGROUND ===== */
+        .bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            animation: orbFloat 12s ease-in-out infinite alternate;
+        }
+
+        .bg-orb-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(0,230,118,0.1) 0%, transparent 70%);
+            top: -150px; left: -100px;
+            animation-duration: 14s;
+        }
+
+        .bg-orb-2 {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(68,138,255,0.08) 0%, transparent 70%);
+            top: 30%; right: -200px;
+            animation-duration: 18s;
+            animation-delay: -5s;
+        }
+
+        .bg-orb-3 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(179,136,255,0.06) 0%, transparent 70%);
+            bottom: -100px; left: 30%;
+            animation-duration: 16s;
+            animation-delay: -8s;
+        }
+
+        .bg-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        @keyframes orbFloat {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 40px) scale(1.1); }
+        }
+
+        /* ===== LAYOUT ===== */
+        .page-wrapper {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+        }
+
+        /* ===== NAVBAR ===== */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            padding: 0.85rem 2rem;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(6, 11, 20, 0.75);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-logo .logo-icon {
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, var(--green), var(--blue));
+            border-radius: 9px;
+            display: flex;
             align-items: center;
             justify-content: center;
-            padding: 2rem 1rem;
+            font-size: 0.95rem;
+            box-shadow: 0 0 15px var(--green-glow);
         }
 
-        .container {
-            width: 100%;
-            max-width: 650px;
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-        }
-
-        header {
-            text-align: center;
-        }
-
-        header h1 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+        .nav-logo .logo-text {
+            background: linear-gradient(90deg, var(--green), var(--blue));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
         }
 
-        header p {
-            color: var(--text-muted);
-            font-size: 1rem;
+        .nav-badge {
+            padding: 0.3rem 0.8rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            background: rgba(0, 230, 118, 0.08);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+            color: var(--green);
         }
 
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            backdrop-filter: blur(16px);
-            border-radius: 20px;
-            padding: 2.5rem;
-            box-shadow: var(--shadow);
-            transition: all 0.3s ease;
-        }
-
-        /* Upload Area */
-        .upload-area {
-            border: 2px dashed rgba(16, 185, 129, 0.3);
-            border-radius: 16px;
-            padding: 3rem 1.5rem;
+        /* ===== HERO ===== */
+        .hero {
+            padding: 100px 1.5rem 30px;
             text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(16, 185, 129, 0.02);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.35rem 0.9rem;
+            border-radius: 50px;
+            background: rgba(0, 230, 118, 0.06);
+            border: 1px solid rgba(0, 230, 118, 0.15);
+            color: var(--green);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 1.2rem;
+            text-transform: uppercase;
+        }
+
+        .hero-tag::before {
+            content: '';
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .hero h1 {
+            font-size: clamp(1.8rem, 4.5vw, 3.2rem);
+            font-weight: 900;
+            line-height: 1.15;
+            letter-spacing: -1.5px;
+            margin-bottom: 0.8rem;
+        }
+
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, var(--green) 0%, var(--blue) 50%, var(--purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.6;
+            max-width: 580px;
+            margin: 0 auto 1.8rem;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .stat-item {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            padding: 0.5rem 1.2rem;
+            border-radius: 12px;
+            min-width: 110px;
+        }
+
+        .stat-number {
+            font-size: 1.2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--green), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 0.15rem;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            max-width: 1280px;
+            width: 95%;
+            margin: 0 auto;
+            padding: 0 1rem 4rem;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .upload-area:hover, .upload-area.dragover {
-            border-color: var(--accent-green);
-            background: rgba(16, 185, 129, 0.05);
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
-        }
-
-        .upload-icon {
-            font-size: 3rem;
-            animation: bounce 2s infinite;
-        }
-
-        .upload-text {
-            font-weight: 500;
-            font-size: 1.1rem;
-        }
-
-        .upload-hint {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-
-        #file-input {
-            display: none;
-        }
-
-        /* Image Preview */
-        .preview-container {
-            display: none;
-            flex-direction: column;
-            align-items: center;
             gap: 1.5rem;
         }
 
-        .preview-image {
-            max-width: 100%;
-            max-height: 250px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            object-fit: contain;
-            box-shadow: var(--shadow);
+        /* Grid Containers */
+        .app-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 0.9fr 0.8fr;
+            gap: 1.5rem;
+            align-items: stretch;
         }
 
-        .btn-group {
+        .app-card {
             display: flex;
-            gap: 1rem;
-            width: 100%;
+            flex-direction: column;
         }
 
-        button {
+        .app-card-body {
+            display: flex;
+            flex-direction: column;
             flex: 1;
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 1rem;
+            justify-content: center;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        /* ===== CARD ===== */
+        .card {
+            background: linear-gradient(135deg, rgba(13, 21, 38, 0.85) 0%, rgba(8, 14, 28, 0.95) 100%);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(24px);
+            border-radius: var(--radius-lg);
+            padding: 1.6rem;
+            box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            border-color: var(--border-hover);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ===== UPLOAD AREA ===== */
+        .upload-zone {
+            border: 2px dashed rgba(0, 230, 118, 0.25);
+            border-radius: var(--radius-md);
+            padding: 2.2rem 1.2rem;
+            text-align: center;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(0, 230, 118, 0.01);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            flex: 1;
+        }
+
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(0,230,118,0.06) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--green);
+            background: rgba(0, 230, 118, 0.03);
+            box-shadow: 0 0 30px var(--green-glow), inset 0 0 20px rgba(0,230,118,0.02);
+        }
+
+        .upload-zone:hover::before, .upload-zone.dragover::before {
+            opacity: 1;
+        }
+
+        .upload-icon-wrap {
+            width: 68px; height: 68px;
+            margin: 0 auto 1.2rem;
+            border-radius: 18px;
+            background: linear-gradient(135deg, rgba(0,230,118,0.15), rgba(68,138,255,0.15));
+            border: 1px solid rgba(0,230,118,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            animation: uploadBounce 3s ease-in-out infinite;
+            box-shadow: 0 8px 24px rgba(0,230,118,0.08);
+        }
+
+        @keyframes uploadBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        .upload-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.4rem;
+        }
+
+        .upload-sub {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1.2rem;
+        }
+
+        .upload-formats {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .fmt-tag {
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        #file-input { display: none; }
+
+        /* ===== PREVIEW ===== */
+        .preview-wrap {
+            display: none;
+            flex-direction: column;
+            gap: 1.2rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .preview-img-box {
+            position: relative;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: rgba(0,0,0,0.4);
+            max-height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #image-preview {
+            width: 100%;
+            max-height: 240px;
+            object-fit: contain;
+            display: block;
+        }
+
+        .preview-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
+        }
+
+        .preview-filename {
+            position: absolute;
+            bottom: 0.8rem;
+            left: 0.8rem;
+            right: 0.8rem;
+            font-size: 0.78rem;
+            color: rgba(255,255,255,0.7);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.85rem 1.2rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.2px;
         }
 
         .btn-primary {
-            background: var(--accent-green);
-            color: #fff;
+            background: linear-gradient(135deg, var(--green), #00bfa5);
+            color: #001a0f;
+            box-shadow: 0 4px 15px rgba(0,230,118,0.25);
         }
 
         .btn-primary:hover {
-            background: #059669;
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,230,118,0.35);
+        }
+
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255,255,255,0.08);
+            border-color: var(--border-hover);
+            color: var(--text-primary);
         }
 
-        /* Loading */
-        .loading {
+        /* ===== LOADING ===== */
+        .loading-wrap {
             display: none;
             flex-direction: column;
             align-items: center;
             gap: 1rem;
-            margin: 1.5rem 0;
+            padding: 3rem 1rem;
+            animation: fadeIn 0.3s ease;
         }
 
-        .spinner {
-            width: 45px;
-            height: 45px;
-            border: 4px solid var(--border-color);
-            border-top: 4px solid var(--accent-green);
+        .loader-ring {
+            width: 56px; height: 56px;
+            position: relative;
+        }
+
+        .loader-ring::before, .loader-ring::after {
+            content: '';
+            position: absolute;
+            inset: 0;
             border-radius: 50%;
+            border: 3px solid transparent;
+        }
+
+        .loader-ring::before {
+            border-top-color: var(--green);
             animation: spin 1s linear infinite;
         }
 
-        /* Results Area */
-        .result-container {
-            display: none;
-            flex-direction: column;
-            gap: 1.5rem;
-            animation: fadeInUp 0.4s ease-out;
+        .loader-ring::after {
+            border-bottom-color: var(--blue);
+            animation: spin 1.5s linear infinite reverse;
+            inset: 6px;
         }
 
-        .result-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
-        .result-icon {
-            font-size: 2.5rem;
-        }
-
-        .result-title {
-            font-size: 1.25rem;
+        .loading-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
             font-weight: 600;
         }
 
-        .result-desc {
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            line-height: 1.5;
-        }
-
-        /* Progress Bars */
-        .prob-bar-container {
+        .loading-steps {
             display: flex;
             flex-direction: column;
-            gap: 0.8rem;
-            padding: 1rem 0;
+            gap: 0.4rem;
+            width: 100%;
+            max-width: 240px;
+            margin-top: 0.5rem;
         }
 
-        .prob-item {
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            opacity: 0;
+            animation: stepReveal 0.5s ease forwards;
+        }
+
+        .step-item.active { color: var(--text-secondary); }
+        .step-item .step-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+        .step-item.active .step-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+        @keyframes stepReveal {
+            to { opacity: 1; transform: translateX(0); }
+            from { opacity: 0; transform: translateX(-8px); }
+        }
+
+        /* ===== RESULT DESIGN ===== */
+        .result-wrap {
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+            animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .result-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .result-image-side {
+            position: relative;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 150px;
+            width: 100%;
+        }
+
+        .result-image-side::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(6, 11, 20, 0.5), transparent);
+            pointer-events: none;
+        }
+
+        #result-image-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .result-info-side {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            justify-content: flex-start;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .result-banner {
+            border-radius: var(--radius-md);
+            padding: 1rem 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-banner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.08;
+            background: var(--result-color, var(--green));
+        }
+
+        .result-banner.organic {
+            --result-color: var(--purple);
+            border-color: rgba(179,136,255,0.25);
+            background: rgba(179,136,255,0.04);
+        }
+
+        .result-banner.recyclable {
+            --result-color: var(--blue);
+            border-color: rgba(68,138,255,0.25);
+            background: rgba(68,138,255,0.04);
+        }
+
+        .result-emoji {
+            font-size: 2.4rem;
+            line-height: 1;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+
+        .result-info { flex: 1; }
+
+        .result-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.2rem;
+        }
+
+        .result-class {
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.1rem;
+        }
+
+        .result-class.organic { color: var(--purple); }
+        .result-class.recyclable { color: var(--blue); }
+
+        .result-confidence {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .confidence-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .confidence-badge.organic {
+            background: rgba(179,136,255,0.15);
+            color: var(--purple);
+            border: 1px solid rgba(179,136,255,0.3);
+        }
+
+        .confidence-badge.recyclable {
+            background: rgba(68,138,255,0.15);
+            color: var(--blue);
+            border: 1px solid rgba(68,138,255,0.3);
+        }
+
+        /* ===== PROB BARS ===== */
+        .prob-section { display: flex; flex-direction: column; gap: 0.8rem; }
+
+        .prob-row {
             display: flex;
             flex-direction: column;
             gap: 0.4rem;
         }
 
-        .prob-labels {
+        .prob-header {
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            font-size: 0.9rem;
-            font-weight: 500;
+        }
+
+        .prob-name {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .prob-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+        }
+
+        .prob-value {
+            font-size: 0.82rem;
+            font-weight: 700;
         }
 
         .bar-track {
-            height: 10px;
-            background: rgba(255, 255, 255, 0.05);
+            height: 8px;
+            background: rgba(255,255,255,0.04);
             border-radius: 50px;
             overflow: hidden;
         }
 
         .bar-fill {
             height: 100%;
-            width: 0%;
+            width: 0;
             border-radius: 50px;
-            transition: width 1s cubic-bezier(0.1, 0.8, 0.1, 1);
+            transition: width 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        #bar-org { background: var(--accent-org); }
-        #bar-rec { background: var(--accent-rec); }
+        .bar-org { background: linear-gradient(90deg, #7c3aed, var(--purple)); }
+        .bar-rec { background: linear-gradient(90deg, #1d4ed8, var(--blue)); }
 
-        /* Error Message */
-        .error-message {
-            display: none;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-            color: #ef4444;
+        /* ===== DESCRIPTION ===== */
+        .desc-box {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
             padding: 1rem;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            line-height: 1.4;
-            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
         }
 
-        /* Footer */
-        footer {
-            text-align: center;
-            font-size: 0.8rem;
+        /* ===== ERROR ===== */
+        .error-wrap {
+            display: none;
+            background: rgba(255,23,68,0.08);
+            border: 1px solid rgba(255,23,68,0.2);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            color: #ff6b6b;
+            font-size: 0.88rem;
+            line-height: 1.5;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        /* ===== WASTE GUIDE CARDS ===== */
+        .guide-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .guide-card {
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            border: 1px solid;
+            cursor: default;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .guide-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .guide-card.organic-card {
+            border-color: rgba(179,136,255,0.15);
+            background: rgba(179,136,255,0.03);
+        }
+
+        .guide-card.organic-card:hover {
+            box-shadow: 0 8px 24px rgba(179,136,255,0.12);
+        }
+
+        .guide-card.recyclable-card {
+            border-color: rgba(68,138,255,0.15);
+            background: rgba(68,138,255,0.03);
+        }
+
+        .guide-card.recyclable-card:hover {
+            box-shadow: 0 8px 24px rgba(68,138,255,0.12);
+        }
+
+        .guide-emoji-box {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .organic-emoji-box {
+            background: rgba(179, 136, 255, 0.1);
+            border: 1px solid rgba(179, 136, 255, 0.25);
+        }
+
+        .recyclable-emoji-box {
+            background: rgba(68, 138, 255, 0.1);
+            border: 1px solid rgba(68, 138, 255, 0.25);
+        }
+
+        .guide-content {
+            flex: 1;
+        }
+
+        .guide-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .guide-title.organic-title { color: var(--purple); }
+        .guide-title.recyclable-title { color: var(--blue); }
+
+        .guide-desc {
+            font-size: 0.76rem;
             color: var(--text-muted);
-            margin-top: 1rem;
+            line-height: 1.4;
         }
 
-        /* Animations */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        /* ===== EXAMPLES ===== */
+        .examples-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            flex: 1;
+            justify-content: center;
         }
 
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+        .example-row {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(15px);
+        .example-badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .badge-organic {
+            background: rgba(179,136,255,0.1);
+            color: var(--purple);
+            border: 1px solid rgba(179,136,255,0.25);
+        }
+
+        .badge-recyclable {
+            background: rgba(68,138,255,0.1);
+            color: var(--blue);
+            border: 1px solid rgba(68,138,255,0.25);
+        }
+
+        .example-text {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        /* ===== HOW IT WORKS (HORIZONTAL STEPPER) ===== */
+        .steps-horizontal {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 1.25rem;
+            margin-top: 0.5rem;
+        }
+
+        .step-card {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .step-card:hover {
+            border-color: rgba(0, 230, 118, 0.3);
+            background: rgba(0, 230, 118, 0.02);
+            transform: translateY(-2px);
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .step-number-badge {
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--green), var(--blue));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #001a0f;
+            box-shadow: 0 0 10px rgba(0, 230, 118, 0.2);
+            flex-shrink: 0;
+        }
+
+        .step-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .step-desc {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            position: relative;
+            z-index: 1;
+            border-top: 1px solid var(--border);
+            padding: 1.5rem;
+            text-align: center;
+            background: rgba(6,11,20,0.8);
+            backdrop-filter: blur(10px);
+            margin-top: 2rem;
+        }
+
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-brand {
+            font-size: 0.85rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--green), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .footer-text {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .footer-tag {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .tag-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: pulse-dot 2s infinite;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .app-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
             }
-            to {
-                opacity: 1;
-                transform: translateY(0);
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
             }
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+            .result-image-side {
+                height: 180px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            nav { padding: 0.8rem 1rem; }
+            .hero { padding: 80px 1rem 20px; }
+            .hero h1 { font-size: 1.6rem; }
+            .hero-stats { gap: 0.8rem; }
+            .stat-item { min-width: 85px; padding: 0.4rem 0.6rem; }
+            .guide-grid { grid-template-columns: 1fr; }
+            .footer-inner { flex-direction: column; text-align: center; }
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <h1>Sistem Deteksi Sampah</h1>
-            <p>Klasifikasi Sampah Organik & Anorganik Berbasis Deep Learning CNN</p>
-        </header>
-
-        <div class="card">
-            <!-- Dropzone Area -->
-            <div id="dropzone" class="upload-area">
-                <div class="upload-icon">📁</div>
-                <div class="upload-text">Tarik & Lepaskan gambar di sini</div>
-                <div class="upload-hint">atau klik untuk memilih dari komputer Anda</div>
-                <input type="file" id="file-input" accept="image/*">
-            </div>
-
-            <!-- Preview Area -->
-            <div id="preview-container" class="preview-container">
-                <img id="image-preview" class="preview-image" src="" alt="Preview">
-                <div class="btn-group">
-                    <button id="btn-predict" class="btn-primary">Mulai Klasifikasi</button>
-                    <button id="btn-reset" class="btn-secondary">Ganti Gambar</button>
-                </div>
-            </div>
-
-            <!-- Loading Spinner -->
-            <div id="loading" class="loading">
-                <div class="spinner"></div>
-                <p style="color: var(--accent-green); font-weight: 500;">Menganalisis gambar sampah...</p>
-            </div>
-
-            <!-- Error Notification -->
-            <div id="error-box" class="error-message"></div>
-
-            <!-- Results Card -->
-            <div id="result-container" class="result-container">
-                <div class="result-header" id="result-header-box">
-                    <div class="result-icon" id="result-icon">♻️</div>
-                    <div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">PREDIKSI TERKUAT</div>
-                        <div class="result-title" id="result-title">Anorganik / Daur Ulang</div>
-                    </div>
-                </div>
-
-                <div class="result-desc" id="result-desc">
-                    Penjelasan rekomendasi sampah akan tampil di sini.
-                </div>
-
-                <div class="prob-bar-container">
-                    <!-- Organik Bar -->
-                    <div class="prob-item">
-                        <div class="prob-labels">
-                            <span>Organik (Organic)</span>
-                            <span id="label-org">0%</span>
-                        </div>
-                        <div class="bar-track">
-                            <div class="bar-fill" id="bar-org"></div>
-                        </div>
-                    </div>
-
-                    <!-- Anorganik Bar -->
-                    <div class="prob-item">
-                        <div class="prob-labels">
-                            <span>Anorganik / Daur Ulang (Recyclable)</span>
-                            <span id="label-rec">0%</span>
-                        </div>
-                        <div class="bar-track">
-                            <div class="bar-fill" id="bar-rec"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <footer>
-            Tugas Proyek Akhir Deep Learning - Klasifikasi Citra Sampah Digital
-        </footer>
+    <!-- BACKGROUND -->
+    <div class="bg-canvas">
+        <div class="bg-grid"></div>
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
     </div>
 
+    <!-- NAVBAR -->
+    <nav>
+        <div class="nav-logo">
+            <div class="logo-icon">🌿</div>
+            <span class="logo-text">EcoScan AI</span>
+        </div>
+        <div class="nav-badge">🤖 Deep Learning CNN</div>
+    </nav>
+
+    <div class="page-wrapper">
+
+        <!-- HERO -->
+        <section class="hero">
+            <div class="hero-tag">Sistem Klasifikasi Sampah Otomatis</div>
+            <h1>
+                Identifikasi Sampah<br>
+                <span class="gradient-text">Secara Instan & Akurat</span>
+            </h1>
+            <p>
+                Upload foto sampah, dan biarkan kecerdasan buatan kami menganalisa
+                apakah sampah tersebut <strong>organik</strong> atau <strong>anorganik</strong> dalam hitungan detik.
+            </p>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number">CNN</div>
+                    <div class="stat-label">Arsitektur Model</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">2</div>
+                    <div class="stat-label">Kategori Sampah</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">150px</div>
+                    <div class="stat-label">Resolusi Input</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">&lt;2s</div>
+                    <div class="stat-label">Waktu Analisis</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+
+            <!-- APP SECTION (Row 1) -->
+            <div class="app-grid">
+                
+                <!-- Left: Upload & Result Card -->
+                <div class="card app-card">
+                    <div class="card-title">🔬 Analisis Gambar Sampah</div>
+                    <div class="app-card-body">
+
+                        <!-- Upload Zone -->
+                        <div id="upload-zone" class="upload-zone">
+                            <div class="upload-icon-wrap">📸</div>
+                            <div class="upload-title">Tarik & Lepaskan gambar di sini</div>
+                            <div class="upload-sub">atau klik untuk membuka file browser</div>
+                            <div class="upload-formats">
+                                <span class="fmt-tag">JPG</span>
+                                <span class="fmt-tag">PNG</span>
+                                <span class="fmt-tag">WEBP</span>
+                                <span class="fmt-tag">GIF</span>
+                            </div>
+                            <input type="file" id="file-input" accept="image/*">
+                        </div>
+
+                        <!-- Preview -->
+                        <div id="preview-wrap" class="preview-wrap">
+                            <div class="preview-img-box">
+                                <img id="image-preview" src="" alt="Preview gambar">
+                                <div class="preview-overlay"></div>
+                                <div class="preview-filename" id="preview-filename"></div>
+                            </div>
+                            <div class="btn-row">
+                                <button id="btn-predict" class="btn btn-primary">
+                                    ⚡ Analisis Sekarang
+                                </button>
+                                <button id="btn-reset" class="btn btn-secondary">
+                                    🔄 Ganti
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Loading -->
+                        <div id="loading-wrap" class="loading-wrap">
+                            <div class="loader-ring"></div>
+                            <div class="loading-text">Menganalisis gambar...</div>
+                            <div class="loading-steps" id="loading-steps"></div>
+                        </div>
+
+                        <!-- Error -->
+                        <div id="error-wrap" class="error-wrap">
+                            <span>⚠️</span>
+                            <span id="error-text">Terjadi kesalahan.</span>
+                        </div>
+
+                        <!-- Result -->
+                        <div id="result-wrap" class="result-wrap">
+                            <div class="result-grid">
+                                <div class="result-image-side">
+                                    <img id="result-image-preview" src="" alt="Analyzed image">
+                                </div>
+                                <div class="result-info-side">
+                                    <div id="result-banner" class="result-banner">
+                                        <div class="result-emoji" id="result-emoji">♻️</div>
+                                        <div class="result-info">
+                                            <div class="result-label">Hasil Klasifikasi</div>
+                                            <div class="result-class" id="result-class">—</div>
+                                            <div class="result-confidence" id="result-conf">Kepercayaan model</div>
+                                        </div>
+                                        <div class="confidence-badge" id="result-badge">0%</div>
+                                    </div>
+
+                                    <div class="prob-section">
+                                        <div class="prob-row">
+                                            <div class="prob-header">
+                                                <span class="prob-name">
+                                                    <span class="prob-dot" style="background:var(--purple)"></span>
+                                                    Organik
+                                                </span>
+                                                <span class="prob-value" id="val-org" style="color:var(--purple)">0%</span>
+                                            </div>
+                                            <div class="bar-track">
+                                                <div class="bar-fill bar-org" id="bar-org"></div>
+                                            </div>
+                                        </div>
+                                        <div class="prob-row">
+                                            <div class="prob-header">
+                                                <span class="prob-name">
+                                                    <span class="prob-dot" style="background:var(--blue)"></span>
+                                                    Anorganik / Daur Ulang
+                                                </span>
+                                                <span class="prob-value" id="val-rec" style="color:var(--blue)">0%</span>
+                                            </div>
+                                            <div class="bar-track">
+                                                <div class="bar-fill bar-rec" id="bar-rec"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="desc-box" id="result-desc">—</div>
+                                </div>
+                            </div>
+
+                            <button id="btn-try-again" class="btn btn-secondary" style="width:100%">
+                                🔍 Coba Gambar Lain
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Panduan Kategori Sampah -->
+                <div class="card app-card">
+                    <div class="card-title">📖 Panduan Kategori Sampah</div>
+                    <div class="guide-grid">
+                        <div class="guide-card organic-card">
+                            <div class="guide-emoji-box organic-emoji-box">🍃</div>
+                            <div class="guide-content">
+                                <div class="guide-title organic-title">Organik</div>
+                                <div class="guide-desc">Sampah dari makhluk hidup & mudah terurai secara alami.</div>
+                            </div>
+                        </div>
+                        <div class="guide-card recyclable-card">
+                            <div class="guide-emoji-box recyclable-emoji-box">♻️</div>
+                            <div class="guide-content">
+                                <div class="guide-title recyclable-title">Anorganik</div>
+                                <div class="guide-desc">Sampah buatan manusia & dapat didaur ulang.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Contoh Jenis Sampah -->
+                <div class="card app-card">
+                    <div class="card-title">🗂️ Contoh Jenis Sampah</div>
+                    <div class="examples-list">
+                        <div class="example-row">
+                            <span class="example-badge badge-organic">Organik</span>
+                            <span class="example-text">Sisa makanan, sayuran, buah-buahan</span>
+                        </div>
+                        <div class="example-row">
+                            <span class="example-badge badge-organic">Organik</span>
+                            <span class="example-text">Daun kering, ranting, rumput</span>
+                        </div>
+                        <div class="example-row">
+                            <span class="example-badge badge-organic">Organik</span>
+                            <span class="example-text">Cangkang telur, kulit kacang</span>
+                        </div>
+                        <div class="example-row">
+                            <span class="example-badge badge-recyclable">Anorganik</span>
+                            <span class="example-text">Botol plastik, kantong kresek</span>
+                        </div>
+                        <div class="example-row">
+                            <span class="example-badge badge-recyclable">Anorganik</span>
+                            <span class="example-text">Kertas, kardus, koran bekas</span>
+                        </div>
+                        <div class="example-row">
+                            <span class="example-badge badge-recyclable">Anorganik</span>
+                            <span class="example-text">Kaleng logam, botol kaca</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- DETAIL INFO SECTION (Row 2: Horizontal Steps) -->
+            <div class="card" style="width: 100%">
+                <div class="card-title">⚙️ Cara Kerja Sistem</div>
+                <div class="steps-horizontal">
+                    <div class="step-card">
+                        <div class="step-header">
+                            <div class="step-number-badge">1</div>
+                            <div class="step-title">Upload Gambar</div>
+                        </div>
+                        <div class="step-desc">Foto sampah diunggah ke server untuk diproses.</div>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-header">
+                            <div class="step-number-badge">2</div>
+                            <div class="step-title">Preprocessing</div>
+                        </div>
+                        <div class="step-desc">Gambar di-resize ke 150×150 piksel dan dinormalisasi.</div>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-header">
+                            <div class="step-number-badge">3</div>
+                            <div class="step-title">Inferensi CNN</div>
+                        </div>
+                        <div class="step-desc">Model CNN mengekstrak fitur dan menghasilkan prediksi.</div>
+                    </div>
+                    <div class="step-card">
+                        <div class="step-header">
+                            <div class="step-number-badge">4</div>
+                            <div class="step-title">Hasil & Rekomendasi</div>
+                        </div>
+                        <div class="step-desc">Kategori sampah ditampilkan beserta tingkat kepercayaan model.</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        </div>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-inner">
+            <div class="footer-brand">EcoScan AI</div>
+            <div class="footer-text">Tugas Proyek Akhir — Sistem Klasifikasi Sampah berbasis Deep Learning CNN</div>
+            <div class="footer-tag">
+                <div class="tag-dot"></div>
+                Server Online
+            </div>
+        </div>
+    </footer>
+
     <script>
-        const dropzone = document.getElementById('dropzone');
-        const fileInput = document.getElementById('file-input');
-        const previewContainer = document.getElementById('preview-container');
+        const API_URL = 'https://arielfarz-klasifikasisampah.hf.space/predict';
+
+        // Elements
+        const uploadZone   = document.getElementById('upload-zone');
+        const fileInput    = document.getElementById('file-input');
+        const previewWrap  = document.getElementById('preview-wrap');
         const imagePreview = document.getElementById('image-preview');
-        const btnPredict = document.getElementById('btn-predict');
-        const btnReset = document.getElementById('btn-reset');
-        const loading = document.getElementById('loading');
-        const resultContainer = document.getElementById('result-container');
-        const errorBox = document.getElementById('error-box');
+        const previewFname = document.getElementById('preview-filename');
+        const btnPredict   = document.getElementById('btn-predict');
+        const btnReset     = document.getElementById('btn-reset');
+        const btnTryAgain  = document.getElementById('btn-try-again');
+        const loadingWrap  = document.getElementById('loading-wrap');
+        const loadingSteps = document.getElementById('loading-steps');
+        const errorWrap    = document.getElementById('error-wrap');
+        const errorText    = document.getElementById('error-text');
+        const resultWrap   = document.getElementById('result-wrap');
+        const resultImgPreview = document.getElementById('result-image-preview');
 
-        const resultHeaderBox = document.getElementById('result-header-box');
-        const resultIcon = document.getElementById('result-icon');
-        const resultTitle = document.getElementById('result-title');
-        const resultDesc = document.getElementById('result-desc');
-
-        const labelOrg = document.getElementById('label-org');
-        const labelRec = document.getElementById('label-rec');
-        const barOrg = document.getElementById('bar-org');
-        const barRec = document.getElementById('bar-rec');
+        const resultBanner = document.getElementById('result-banner');
+        const resultEmoji  = document.getElementById('result-emoji');
+        const resultClass  = document.getElementById('result-class');
+        const resultConf   = document.getElementById('result-conf');
+        const resultBadge  = document.getElementById('result-badge');
+        const resultDesc   = document.getElementById('result-desc');
+        const valOrg       = document.getElementById('val-org');
+        const valRec       = document.getElementById('val-rec');
+        const barOrg       = document.getElementById('bar-org');
+        const barRec       = document.getElementById('bar-rec');
 
         let selectedFile = null;
 
-        // Trigger file input click
-        dropzone.addEventListener('click', () => fileInput.click());
+        // Loading step messages
+        const loadSteps = [
+            "Membaca file gambar...",
+            "Mengirim ke server AI...",
+            "Preprocessing piksel...",
+            "Inferensi model CNN...",
+            "Menyusun hasil analisis..."
+        ];
 
-        // File Drag & Drop events
-        dropzone.addEventListener('dragover', (e) => {
+        // ===== DRAG & DROP =====
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        uploadZone.addEventListener('dragover', e => {
             e.preventDefault();
-            dropzone.classList.add('dragover');
+            uploadZone.classList.add('dragover');
         });
 
-        dropzone.addEventListener('dragleave', () => {
-            dropzone.classList.remove('dragover');
-        });
-
-        dropzone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropzone.classList.remove('dragover');
-            if (e.dataTransfer.files.length > 0) {
-                handleFile(e.dataTransfer.files[0]);
+        uploadZone.addEventListener('dragleave', e => {
+            if (!uploadZone.contains(e.relatedTarget)) {
+                uploadZone.classList.remove('dragover');
             }
         });
 
-        // File selected via dialog
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
         });
 
-        // Process file preview
+        fileInput.addEventListener('change', e => {
+            if (e.target.files.length > 0) handleFile(e.target.files[0]);
+        });
+
         function handleFile(file) {
             if (!file.type.startsWith('image/')) {
-                showError("Berkas yang dipilih harus berupa file gambar (.jpg, .jpeg, .png).");
+                showError('File harus berupa gambar (JPG, PNG, WEBP, dll.).');
                 return;
             }
             selectedFile = file;
-            errorBox.style.display = 'none';
-            resultContainer.style.display = 'none';
-
+            hideAll();
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = e => {
                 imagePreview.src = e.target.result;
-                dropzone.style.display = 'none';
-                previewContainer.style.display = 'flex';
-            }
+                previewFname.textContent = file.name + ' • ' + formatSize(file.size);
+                uploadZone.style.display = 'none';
+                previewWrap.style.display = 'flex';
+            };
             reader.readAsDataURL(file);
         }
 
-        // Reset App State
-        btnReset.addEventListener('click', () => {
-            selectedFile = null;
-            fileInput.value = '';
-            dropzone.style.display = 'flex';
-            previewContainer.style.display = 'none';
-            resultContainer.style.display = 'none';
-            errorBox.style.display = 'none';
-        });
-
-        // Error message helper
-        function showError(message) {
-            errorBox.textContent = message;
-            errorBox.style.display = 'block';
-            loading.style.display = 'none';
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
         }
 
-        // Send predict request to Flask backend
+        // ===== RESET =====
+        function resetAll() {
+            selectedFile = null;
+            fileInput.value = '';
+            hideAll();
+            uploadZone.style.display = 'flex';
+            previewWrap.style.display = 'none';
+            resultImgPreview.src = '';
+        }
+
+        btnReset.addEventListener('click', resetAll);
+        btnTryAgain.addEventListener('click', resetAll);
+
+        function hideAll() {
+            errorWrap.style.display  = 'none';
+            loadingWrap.style.display = 'none';
+            resultWrap.style.display = 'none';
+        }
+
+        function showError(msg) {
+            hideAll();
+            errorText.textContent = msg;
+            errorWrap.style.display = 'flex';
+        }
+
+        // ===== LOADING ANIMATION =====
+        function animateLoadingSteps() {
+            loadingSteps.innerHTML = '';
+            loadSteps.forEach((text, i) => {
+                const el = document.createElement('div');
+                el.className = 'step-item';
+                el.style.animationDelay = (i * 0.4) + 's';
+                el.innerHTML = `<span class="step-dot"></span><span>${text}</span>`;
+                loadingSteps.appendChild(el);
+                // Activate steps progressively
+                setTimeout(() => el.classList.add('active'), i * 400 + 100);
+            });
+        }
+
+        // ===== PREDICT =====
         btnPredict.addEventListener('click', () => {
             if (!selectedFile) return;
 
-            loading.style.display = 'flex';
-            resultContainer.style.display = 'none';
-            errorBox.style.display = 'none';
+            hideAll();
+            previewWrap.style.display = 'none';
+            loadingWrap.style.display = 'flex';
+            btnPredict.disabled = true;
+            animateLoadingSteps();
 
             const formData = new FormData();
             formData.append('file', selectedFile);
-
-            // KONFIGURASI API URL (Mode Hybrid)
-            // - Untuk lokal: gunakan '/predict'
-            // - Untuk Hugging Face: ubah ke URL Space Anda, contoh: 'https://username-spacename.hf.space/predict'
-            const API_URL = 'https://arielfarz-klasifikasisampah.hf.space/predict';
 
             fetch(API_URL, {
                 method: 'POST',
@@ -492,32 +1474,59 @@
             })
             .then(response => response.json().then(data => ({ status: response.status, body: data })))
             .then(res => {
-                loading.style.display = 'none';
+                loadingWrap.style.display = 'none';
+                btnPredict.disabled = false;
+
                 if (res.status !== 200) {
-                    showError(res.body.error || "Gagal menghubungi server klasifikasi.");
+                    showError(res.body.error || 'Server mengembalikan error. Coba lagi.');
                     return;
                 }
 
-                // Render prediction results
-                const result = res.body;
-                resultIcon.textContent = result.icon;
-                resultTitle.textContent = result.class;
-                resultDesc.textContent = result.description;
-                resultHeaderBox.style.borderColor = result.color;
-
-                // Adjust progress bar values
-                labelOrg.textContent = result.organic_prob + '%';
-                labelRec.textContent = result.recyclable_prob + '%';
-                
-                barOrg.style.width = result.organic_prob + '%';
-                barRec.style.width = result.recyclable_prob + '%';
-
-                resultContainer.style.display = 'flex';
+                renderResult(res.body);
             })
             .catch(err => {
-                showError("Gagal menghubungi server backend: " + err.message);
+                loadingWrap.style.display = 'none';
+                btnPredict.disabled = false;
+                showError('Gagal terhubung ke server: ' + err.message + '. Pastikan server backend sudah berjalan.');
             });
         });
+
+        // ===== RENDER RESULT =====
+        function renderResult(data) {
+            const isOrg = data.class.toLowerCase().includes('organik') && !data.class.toLowerCase().includes('anorganik');
+            const typeClass = isOrg ? 'organic' : 'recyclable';
+            const pOrg = parseFloat(data.organic_prob);
+            const pRec = parseFloat(data.recyclable_prob);
+            const conf = isOrg ? pOrg : pRec;
+
+            // Set result image
+            resultImgPreview.src = imagePreview.src;
+
+            // Banner
+            resultBanner.className = 'result-banner ' + typeClass;
+            resultEmoji.textContent = data.icon;
+            resultClass.className = 'result-class ' + typeClass;
+            resultClass.textContent = isOrg ? 'Organik' : 'Anorganik / Daur Ulang';
+            resultConf.textContent = `Kepercayaan model: ${conf.toFixed(1)}%`;
+            resultBadge.className = 'confidence-badge ' + typeClass;
+            resultBadge.textContent = conf.toFixed(0) + '%';
+
+            // Description
+            resultDesc.textContent = data.description;
+
+            // Bars (animate after small delay)
+            valOrg.textContent = pOrg.toFixed(1) + '%';
+            valRec.textContent = pRec.toFixed(1) + '%';
+            barOrg.style.width = '0%';
+            barRec.style.width = '0%';
+
+            setTimeout(() => {
+                barOrg.style.width = pOrg + '%';
+                barRec.style.width = pRec + '%';
+            }, 100);
+
+            resultWrap.style.display = 'flex';
+        }
     </script>
 </body>
 </html>
