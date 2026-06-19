@@ -67,7 +67,8 @@ def simulate_prediction(img):
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    status_mode = "Real CNN Model" if model is not None else "Simulation"
+    return f"Waste Classifier API is running! [Mode: {status_mode}]"
 
 @app.route('/predict', methods=['POST'])
 def predict():
