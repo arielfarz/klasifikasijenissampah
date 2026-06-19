@@ -1,0 +1,10 @@
+dataset/
+.git/
+.venv/
+venv/
+__pycache__/
+*.ipynb
+*.png
+*.h5
+*.log
+.gemini/

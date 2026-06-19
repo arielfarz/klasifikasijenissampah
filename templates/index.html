@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Klasifikasi Sampah Otomatis - Deep Learning</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-color: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-green: #10b981;
+            --accent-rec: #3b82f6;
+            --accent-org: #a78bfa;
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 650px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        header {
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed rgba(16, 185, 129, 0.3);
+            border-radius: 16px;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(16, 185, 129, 0.02);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--accent-green);
+            background: rgba(16, 185, 129, 0.05);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            animation: bounce 2s infinite;
+        }
+
+        .upload-text {
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .upload-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        /* Image Preview */
+        .preview-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 250px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            object-fit: contain;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: var(--accent-green);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #059669;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .spinner {
+            width: 45px;
+            height: 45px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Results Area */
+        .result-container {
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+        }
+
+        .result-icon {
+            font-size: 2.5rem;
+        }
+
+        .result-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .result-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Progress Bars */
+        .prob-bar-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            padding: 1rem 0;
+        }
+
+        .prob-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .prob-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .bar-track {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 50px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 50px;
+            transition: width 1s cubic-bezier(0.1, 0.8, 0.1, 1);
+        }
+
+        #bar-org { background: var(--accent-org); }
+        #bar-rec { background: var(--accent-rec); }
+
+        /* Error Message */
+        .error-message {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            margin-top: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 1rem;
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Sistem Deteksi Sampah</h1>
+            <p>Klasifikasi Sampah Organik & Anorganik Berbasis Deep Learning CNN</p>
+        </header>
+
+        <div class="card">
+            <!-- Dropzone Area -->
+            <div id="dropzone" class="upload-area">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Tarik & Lepaskan gambar di sini</div>
+                <div class="upload-hint">atau klik untuk memilih dari komputer Anda</div>
+                <input type="file" id="file-input" accept="image/*">
+            </div>
+
+            <!-- Preview Area -->
+            <div id="preview-container" class="preview-container">
+                <img id="image-preview" class="preview-image" src="" alt="Preview">
+                <div class="btn-group">
+                    <button id="btn-predict" class="btn-primary">Mulai Klasifikasi</button>
+                    <button id="btn-reset" class="btn-secondary">Ganti Gambar</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p style="color: var(--accent-green); font-weight: 500;">Menganalisis gambar sampah...</p>
+            </div>
+
+            <!-- Error Notification -->
+            <div id="error-box" class="error-message"></div>
+
+            <!-- Results Card -->
+            <div id="result-container" class="result-container">
+                <div class="result-header" id="result-header-box">
+                    <div class="result-icon" id="result-icon">♻️</div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">PREDIKSI TERKUAT</div>
+                        <div class="result-title" id="result-title">Anorganik / Daur Ulang</div>
+                    </div>
+                </div>
+
+                <div class="result-desc" id="result-desc">
+                    Penjelasan rekomendasi sampah akan tampil di sini.
+                </div>
+
+                <div class="prob-bar-container">
+                    <!-- Organik Bar -->
+                    <div class="prob-item">
+                        <div class="prob-labels">
+                            <span>Organik (Organic)</span>
+                            <span id="label-org">0%</span>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill" id="bar-org"></div>
+                        </div>
+                    </div>
+
+                    <!-- Anorganik Bar -->
+                    <div class="prob-item">
+                        <div class="prob-labels">
+                            <span>Anorganik / Daur Ulang (Recyclable)</span>
+                            <span id="label-rec">0%</span>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill" id="bar-rec"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            Tugas Proyek Akhir Deep Learning - Klasifikasi Citra Sampah Digital
+        </footer>
+    </div>
+
+    <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const btnPredict = document.getElementById('btn-predict');
+        const btnReset = document.getElementById('btn-reset');
+        const loading = document.getElementById('loading');
+        const resultContainer = document.getElementById('result-container');
+        const errorBox = document.getElementById('error-box');
+
+        const resultHeaderBox = document.getElementById('result-header-box');
+        const resultIcon = document.getElementById('result-icon');
+        const resultTitle = document.getElementById('result-title');
+        const resultDesc = document.getElementById('result-desc');
+
+        const labelOrg = document.getElementById('label-org');
+        const labelRec = document.getElementById('label-rec');
+        const barOrg = document.getElementById('bar-org');
+        const barRec = document.getElementById('bar-rec');
+
+        let selectedFile = null;
+
+        // Trigger file input click
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        // File Drag & Drop events
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        // File selected via dialog
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        // Process file preview
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError("Berkas yang dipilih harus berupa file gambar (.jpg, .jpeg, .png).");
+                return;
+            }
+            selectedFile = file;
+            errorBox.style.display = 'none';
+            resultContainer.style.display = 'none';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                imagePreview.src = e.target.result;
+                dropzone.style.display = 'none';
+                previewContainer.style.display = 'flex';
+            }
+            reader.readAsDataURL(file);
+        }
+
+        // Reset App State
+        btnReset.addEventListener('click', () => {
+            selectedFile = null;
+            fileInput.value = '';
+            dropzone.style.display = 'flex';
+            previewContainer.style.display = 'none';
+            resultContainer.style.display = 'none';
+            errorBox.style.display = 'none';
+        });
+
+        // Error message helper
+        function showError(message) {
+            errorBox.textContent = message;
+            errorBox.style.display = 'block';
+            loading.style.display = 'none';
+        }
+
+        // Send predict request to Flask backend
+        btnPredict.addEventListener('click', () => {
+            if (!selectedFile) return;
+
+            loading.style.display = 'flex';
+            resultContainer.style.display = 'none';
+            errorBox.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            // KONFIGURASI API URL (Mode Hybrid)
+            // - Untuk lokal: gunakan '/predict'
+            // - Untuk Hugging Face: ubah ke URL Space Anda, contoh: 'https://username-spacename.hf.space/predict'
+            const API_URL = '/predict';
+
+            fetch(API_URL, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json().then(data => ({ status: response.status, body: data })))
+            .then(res => {
+                loading.style.display = 'none';
+                if (res.status !== 200) {
+                    showError(res.body.error || "Gagal menghubungi server klasifikasi.");
+                    return;
+                }
+
+                // Render prediction results
+                const result = res.body;
+                resultIcon.textContent = result.icon;
+                resultTitle.textContent = result.class;
+                resultDesc.textContent = result.description;
+                resultHeaderBox.style.borderColor = result.color;
+
+                // Adjust progress bar values
+                labelOrg.textContent = result.organic_prob + '%';
+                labelRec.textContent = result.recyclable_prob + '%';
+                
+                barOrg.style.width = result.organic_prob + '%';
+                barRec.style.width = result.recyclable_prob + '%';
+
+                resultContainer.style.display = 'flex';
+            })
+            .catch(err => {
+                showError("Gagal menghubungi server backend: " + err.message);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+# Exclude dataset (very large)
+dataset/
+
+# Exclude python cache and environment
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# Exclude local models (if you don't want to push model file to Github)
+# model_waste_cnn.keras
+
+# Exclude temporary notebook check points
+.ipynb_checkpoints/
+
+# Exclude temp OS files
+Thumbs.db
+Desktop.ini
