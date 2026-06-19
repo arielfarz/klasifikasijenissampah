@@ -11,21 +11,22 @@ CORS(app) # Mengaktifkan CORS untuk seluruh rute
 MODEL_SAVE_PATH = "model_waste_cnn.keras"
 IMAGE_SIZE = (150, 150)
 
-# Coba import tensorflow secara opsional untuk menghindari error di python lokal tanpa tensorflow
+# Coba import tensorflow dan keras secara opsional untuk menghindari error di python lokal tanpa tensorflow
 HAS_TENSORFLOW = False
 try:
     import tensorflow as tf
+    import keras
     HAS_TENSORFLOW = True
 except ImportError:
-    print("[PERINGATAN] TensorFlow tidak terdeteksi di lingkungan Python lokal.")
+    print("[PERINGATAN] TensorFlow atau Keras tidak terdeteksi di lingkungan Python lokal.")
     print("[INFO] Server Flask akan berjalan dalam MODE DEMO/SIMULASI.")
     print("[INFO] Anda tetap dapat membuka web, mengunggah gambar, dan menguji UI.")
 
-# Load model secara global jika TensorFlow tersedia dan model sudah dilatih
+# Load model secara global jika TensorFlow & Keras tersedia dan model sudah dilatih
 model = None
 if HAS_TENSORFLOW and os.path.exists(MODEL_SAVE_PATH):
     try:
-        model = tf.keras.models.load_model(MODEL_SAVE_PATH)
+        model = keras.models.load_model(MODEL_SAVE_PATH)
         print("[INFO] Model Keras berhasil dimuat.")
     except Exception as e:
         print(f"[EROR] Gagal memuat model: {e}")
@@ -93,17 +94,17 @@ def predict():
             # Lazy loading model jika belum termuat
             if model is None and os.path.exists(MODEL_SAVE_PATH):
                 try:
-                    model = tf.keras.models.load_model(MODEL_SAVE_PATH)
+                    model = keras.models.load_model(MODEL_SAVE_PATH)
                 except Exception as e:
                     print(f"[WARNING] Gagal memuat model: {e}")
             
             if model is not None:
                 use_simulation = False
                 img_resized = img.resize(IMAGE_SIZE)
-                img_array = tf.keras.preprocessing.image.img_to_array(img_resized)
+                img_array = np.array(img_resized, dtype=np.float32)
                 img_array = np.expand_dims(img_array, axis=0) # batch dimension
                 
-                # Prediksi real
+                # Prediksi real menggunakan model Keras
                 prediction = model.predict(img_array, verbose=0)[0][0]
                 prob_recyclable = float(prediction)
                 prob_organic = float(1 - prediction)
