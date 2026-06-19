@@ -17,6 +17,24 @@ try:
     import tensorflow as tf
     import keras
     HAS_TENSORFLOW = True
+    
+    # PATCH UNTUK DESERIALISASI KERAS (Bypass error quantization_config di Keras versi lama)
+    try:
+        original_dense_init = keras.layers.Dense.__init__
+        def patched_dense_init(self, *args, **kwargs):
+            kwargs.pop('quantization_config', None)
+            original_dense_init(self, *args, **kwargs)
+        keras.layers.Dense.__init__ = patched_dense_init
+        
+        original_conv2d_init = keras.layers.Conv2D.__init__
+        def patched_conv2d_init(self, *args, **kwargs):
+            kwargs.pop('quantization_config', None)
+            original_conv2d_init(self, *args, **kwargs)
+        keras.layers.Conv2D.__init__ = patched_conv2d_init
+        print("[INFO] Keras deserializer patch applied successfully.")
+    except Exception as patch_err:
+        print(f"[WARNING] Gagal menerapkan patch Keras: {patch_err}")
+        
 except ImportError:
     print("[PERINGATAN] TensorFlow atau Keras tidak terdeteksi di lingkungan Python lokal.")
     print("[INFO] Server Flask akan berjalan dalam MODE DEMO/SIMULASI.")
